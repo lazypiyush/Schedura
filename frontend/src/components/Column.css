@@ -1,0 +1,161 @@
+.column {
+  background: var(--bg-primary);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 280px);
+  min-height: 500px;
+  transition: all 0.3s ease;
+}
+
+.column-header {
+  padding: 16px 20px;
+  border-bottom: 2px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 14px 14px 0 0;
+  transition: background 0.3s ease;
+  flex-shrink: 0;
+}
+
+.column-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.column-title h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.task-count {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.add-task-btn {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.add-task-btn:hover {
+  background: var(--primary-blue-dark);
+  transform: scale(1.1);
+}
+
+.column-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* Better scrollbar styling */
+.column-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.column-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.column-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.column-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-blue);
+}
+
+.empty-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  min-height: 200px;
+}
+
+.empty-column p {
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.empty-column button {
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-color);
+  color: var(--text-primary);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.empty-column button:hover {
+  background: var(--primary-blue);
+  color: white;
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+/* Highlight column when dragging over it */
+.column-drag-over {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.column-drag-over .column-header {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+/* Drop zone spacer at bottom */
+.drop-zone-spacer {
+  min-height: 120px;
+  border: 2px dashed transparent;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.column-drag-over .drop-zone-spacer {
+  border-color: var(--primary-blue);
+  background: rgba(33, 150, 243, 0.05);
+}
+
+/* Better task card spacing */
+.column-content > * {
+  flex-shrink: 0;
+}
