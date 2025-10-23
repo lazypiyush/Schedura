@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef } from 'react'
 import './TaskCard.css'
 
-const TaskCard = ({ task, isDragging, onMoveTask, isFocused, setFocused, clearFocus, onTaskClick }) => {
+const TaskCard = ({ task, isDragging, onEditTask, onDeleteTask, onMoveTask, isFocused, setFocused, clearFocus, onTaskClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: task._id
   })
@@ -70,12 +70,17 @@ const TaskCard = ({ task, isDragging, onMoveTask, isFocused, setFocused, clearFo
     }
   }
 
+  // UPDATED: Don't open modal on card click, just focus
   const handleCardClick = (e) => {
-    // Don't open modal if clicking arrow buttons
-    if (e.target.closest('.task-arrow-btn')) return
-    if (onTaskClick) {
-      onTaskClick(task)
+    // Don't do anything if clicking buttons
+    if (e.target.closest('.task-arrow-btn') || 
+        e.target.closest('.task-edit-btn') || 
+        e.target.closest('.task-delete-btn') ||
+        e.target.closest('.task-comment-btn')) {
+      return
     }
+    // Just focus the card, don't open modal
+    setFocused()
   }
 
   const combinedRef = (element) => {
@@ -98,12 +103,34 @@ const TaskCard = ({ task, isDragging, onMoveTask, isFocused, setFocused, clearFo
     >
       <div className="task-header">
         <h4>{task.title}</h4>
-        <span 
-          className="priority-badge" 
-          style={{ backgroundColor: priorityColors[task.priority] }}
-        >
-          {task.priority}
-        </span>
+        <div className="task-header-actions">
+          <span 
+            className="priority-badge" 
+            style={{ backgroundColor: priorityColors[task.priority] }}
+          >
+            {task.priority}
+          </span>
+          <button
+            className="task-edit-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onEditTask) onEditTask(task);
+            }}
+            title="Edit task"
+          >
+            ✏️
+          </button>
+          <button
+            className="task-delete-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onDeleteTask) onDeleteTask(task._id);
+            }}
+            title="Delete task"
+          >
+            🗑️
+          </button>
+        </div>
       </div>
       
       {task.description && (
@@ -123,11 +150,17 @@ const TaskCard = ({ task, isDragging, onMoveTask, isFocused, setFocused, clearFo
             </span>
           )}
         </div>
-        {task.commentCount > 0 && (
-          <span className="comment-count">
-            💬 {task.commentCount}
-          </span>
-        )}
+        {/* UPDATED: Make comment count a clickable button */}
+        <button
+          className="task-comment-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onTaskClick) onTaskClick(task);
+          }}
+          title="View comments"
+        >
+          💬 {task.commentCount > 0 ? task.commentCount : ''}
+        </button>
       </div>
       
       {isFocused && (

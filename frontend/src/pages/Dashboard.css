@@ -442,7 +442,7 @@
   .dashboard-header {
     flex-direction: column;
     gap: 24px;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .stats-cards {
@@ -546,4 +546,31 @@
 
 .btn-refresh:active {
   transform: translateY(0);
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-edit-project,
+.btn-delete-project {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-edit-project:hover {
+  background: rgba(33, 150, 243, 0.1);
+  transform: scale(1.1);
+}
+
+.btn-delete-project:hover {
+  background: rgba(244, 67, 54, 0.1);
+  transform: scale(1.1);
 }

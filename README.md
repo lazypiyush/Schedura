@@ -35,3 +35,14 @@ A collaborative project management application similar to Trello/Asana with real
 - Clerk account
 
 ### Backend Setup
+Create a file named .env in backend folder and paste this code but remember to replace keys with your credentials
+
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/projectmanager?retryWrites=true&w=majority 
+JWT_SECRET=your_secret_key_at_least_32_characters_long                                                    
+PORT=5000
+
+### Frontend Setup
+
+Create a file named .env in frontend folder and paste this code but remember to replace keys with your credentials
+
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key_here

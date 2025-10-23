@@ -1,12 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './ProjectModal.css'
 
-const ProjectModal = ({ onClose, onSubmit }) => {
+const ProjectModal = ({ project, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     color: '#1976D2'
   })
+
+  // Pre-fill form if editing existing project
+  useEffect(() => {
+    if (project) {
+      setFormData({
+        title: project.title || '',
+        description: project.description || '',
+        color: project.color || '#1976D2'
+      })
+    }
+  }, [project])
 
   const colors = [
     '#1976D2', '#2196F3', '#42A5F5', '#0D47A1',
@@ -23,7 +34,7 @@ const ProjectModal = ({ onClose, onSubmit }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Create New Project</h2>
+          <h2>{project ? 'Edit Project' : 'Create New Project'}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         
@@ -69,7 +80,7 @@ const ProjectModal = ({ onClose, onSubmit }) => {
               Cancel
             </button>
             <button type="submit" className="btn-submit">
-              Create Project
+              {project ? 'Update Project' : 'Create Project'}
             </button>
           </div>
         </form>

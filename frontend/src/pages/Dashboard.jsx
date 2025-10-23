@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState(null)
+  const [editingProject, setEditingProject] = useState(null) // NEW: for editing
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light'
@@ -22,38 +23,36 @@ const Dashboard = () => {
   }, [])
 
   // Detect user change and refresh data
-useEffect(() => {
-  if (user?.id) {
-    const storedUserId = localStorage.getItem('lastUserId');
-    
-    // Check if user changed
-    if (storedUserId && storedUserId !== user.id) {
-      console.log('🔄 User changed! Reloading page...');
+  useEffect(() => {
+    if (user?.id) {
+      const storedUserId = localStorage.getItem('lastUserId');
+      
+      // Check if user changed
+      if (storedUserId && storedUserId !== user.id) {
+        console.log('🔄 User changed! Reloading page...');
+        localStorage.setItem('lastUserId', user.id);
+        localStorage.removeItem('token');
+        window.location.href = '/dashboard';
+        return;
+      }
+      
+      // First time or same user
       localStorage.setItem('lastUserId', user.id);
-      localStorage.removeItem('token'); // Clear old token
-      window.location.href = '/dashboard'; // Force reload to dashboard
-      return; // Stop execution
+      setCurrentUserId(user.id);
+      
+      // Clear old data and fetch new
+      setProjects([]);
+      setLoading(true);
+      fetchProjects();
+      
+    } else if (!user) {
+      // User logged out
+      setProjects([]);
+      setCurrentUserId(null);
+      localStorage.removeItem('lastUserId');
+      localStorage.removeItem('token');
     }
-    
-    // First time or same user
-    localStorage.setItem('lastUserId', user.id);
-    setCurrentUserId(user.id);
-    
-    // Clear old data and fetch new
-    setProjects([]);
-    setLoading(true);
-    fetchProjects();
-    
-  } else if (!user) {
-    // User logged out
-    setProjects([]);
-    setCurrentUserId(null);
-    localStorage.removeItem('lastUserId');
-    localStorage.removeItem('token');
-  }
-}, [user?.id]);
-
-
+  }, [user?.id]);
 
   const fetchProjects = async () => {
     try {
@@ -61,7 +60,7 @@ useEffect(() => {
       setProjects(response.data)
     } catch (error) {
       console.error('Error fetching projects:', error)
-      setProjects([]) // Clear on error
+      setProjects([])
     } finally {
       setLoading(false)
     }
@@ -77,29 +76,38 @@ useEffect(() => {
   const handleCreateProject = async (projectData) => {
     try {
       await projectsAPI.create(projectData)
-      await fetchProjects() // Refresh list
+      await fetchProjects()
       setShowModal(false)
     } catch (error) {
       console.error('Error creating project:', error)
     }
   }
 
-  // Calculate stats from real data (around line 90-95)
-const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0)
+  // NEW: Handle project update
+  const handleUpdateProject = async (projectData) => {
+    try {
+      await projectsAPI.update(editingProject._id, projectData)
+      await fetchProjects()
+      setEditingProject(null)
+    } catch (error) {
+      console.error('Error updating project:', error)
+    }
+  }
 
-// Count completed projects (projects where ALL tasks are done)
-const completedProjects = projects.filter(project => {
-  const projectTasks = project.tasks || []
-  if (projectTasks.length === 0) return false // No tasks = not completed
-  return projectTasks.every(task => task.status === 'done') // All tasks done
-}).length
+  // Calculate stats from real data
+  const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0)
 
-const inProgressTasks = totalTasks - projects.reduce((sum, p) => 
-  sum + (p.tasks?.filter(t => t.status === 'done').length || 0), 0
-)
+  const completedProjects = projects.filter(project => {
+    const projectTasks = project.tasks || []
+    if (projectTasks.length === 0) return false
+    return projectTasks.every(task => task.status === 'done')
+  }).length
 
-const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0), 0)
+  const inProgressTasks = totalTasks - projects.reduce((sum, p) => 
+    sum + (p.tasks?.filter(t => t.status === 'done').length || 0), 0
+  )
 
+  const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0), 0)
 
   if (loading) {
     return (
@@ -140,71 +148,69 @@ const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0),
 
       <div className="dashboard-content">
         <div className="dashboard-header">
-  <div className="header-left">
-    <h1>My Projects</h1>
-    <p className="subtitle">Manage and track your projects in one place</p>
-  </div>
-  <div className="header-right">
-    <button 
-      className="btn-primary" 
-      onClick={() => {
-        setLoading(true)
-        fetchProjects()
-      }}
-      title="Refresh projects"
-    >
-      🔄 Refresh
-    </button>
-    <button className="btn-primary" onClick={() => setShowModal(true)}>
-      <span className="btn-icon">+</span>
-      New Project
-    </button>
-  </div>
-</div>
-
+          <div className="header-left">
+            <h1>My Projects</h1>
+            <p className="subtitle">Manage and track your projects in one place</p>
+          </div>
+          <div className="header-right">
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                setLoading(true)
+                fetchProjects()
+              }}
+              title="Refresh projects"
+            >
+              🔄 Refresh
+            </button>
+            <button className="btn-primary" onClick={() => setShowModal(true)}>
+              <span className="btn-icon">+</span>
+              New Project
+            </button>
+          </div>
+        </div>
 
         <div className="stats-cards">
-  <div className="stat-card">
-    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)' }}>
-      📊
-    </div>
-    <div className="stat-info">
-      <h3>{projects.length}</h3>
-      <p>Total Projects</p>
-    </div>
-  </div>
-  
-  <div className="stat-card">
-    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #42A5F5 0%, #64B5F6 100%)' }}>
-      ✅
-    </div>
-    <div className="stat-info">
-      <h3>{completedProjects}</h3>
-      <p>Completed Projects</p>
-    </div>
-  </div>
-  
-  <div className="stat-card">
-    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)' }}>
-      🔄
-    </div>
-    <div className="stat-info">
-      <h3>{inProgressTasks}</h3>
-      <p>In Progress Tasks</p>
-    </div>
-  </div>
-  
-  <div className="stat-card">
-    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #2196F3 0%, #42A5F5 100%)' }}>
-      👥
-    </div>
-    <div className="stat-info">
-      <h3>{totalMembers}</h3>
-      <p>Team Members</p>
-    </div>
-  </div>
-</div>
-
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)' }}>
+              📊
+            </div>
+            <div className="stat-info">
+              <h3>{projects.length}</h3>
+              <p>Total Projects</p>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #42A5F5 0%, #64B5F6 100%)' }}>
+              ✅
+            </div>
+            <div className="stat-info">
+              <h3>{completedProjects}</h3>
+              <p>Completed Projects</p>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)' }}>
+              🔄
+            </div>
+            <div className="stat-info">
+              <h3>{inProgressTasks}</h3>
+              <p>In Progress Tasks</p>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #2196F3 0%, #42A5F5 100%)' }}>
+              👥
+            </div>
+            <div className="stat-info">
+              <h3>{totalMembers}</h3>
+              <p>Team Members</p>
+            </div>
+          </div>
+        </div>
 
         {projects.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -222,12 +228,10 @@ const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0),
         ) : (
           <div className="projects-grid">
             {projects.map(project => {
-              // Get tasks from the project's tasks array (populated by backend)
               const projectTasks = project.tasks || []
               const taskCount = projectTasks.length
               const completedCount = projectTasks.filter(t => t.status === 'done').length
               
-              // Calculate weighted progress based on task positions in workflow
               const calculateProgress = (tasksList) => {
                 if (tasksList.length === 0) return 0
                 
@@ -254,24 +258,38 @@ const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0),
                       <div className="project-color" style={{ backgroundColor: project.color || '#1976D2' }}></div>
                       <h3>{project.title}</h3>
                     </div>
-                    <button 
-                      className="btn-delete-project"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Are you sure you want to delete "${project.title}"?`)) {
-                          try {
-                            await projectsAPI.delete(project._id);
-                            await fetchProjects();
-                          } catch (error) {
-                            console.error('Error deleting project:', error);
-                            alert('Failed to delete project. You may not have permission.');
+                    <div className="project-actions">
+                      {/* NEW: Edit button */}
+                      <button 
+                        className="btn-edit-project"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingProject(project);
+                        }}
+                        title="Edit project"
+                      >
+                        ✏️
+                      </button>
+                      {/* Delete button */}
+                      <button 
+                        className="btn-delete-project"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete "${project.title}"?`)) {
+                            try {
+                              await projectsAPI.delete(project._id);
+                              await fetchProjects();
+                            } catch (error) {
+                              console.error('Error deleting project:', error);
+                              alert('Failed to delete project. You may not have permission.');
+                            }
                           }
-                        }
-                      }}
-                      title="Delete project"
-                    >
-                      🗑️
-                    </button>
+                        }}
+                        title="Delete project"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                   <p className="project-description">{project.description || 'No description provided'}</p>
                   
@@ -313,10 +331,20 @@ const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0),
         )}
       </div>
 
+      {/* Create modal */}
       {showModal && (
         <ProjectModal 
           onClose={() => setShowModal(false)} 
           onSubmit={handleCreateProject}
+        />
+      )}
+
+      {/* NEW: Edit modal */}
+      {editingProject && (
+        <ProjectModal 
+          project={editingProject}
+          onClose={() => setEditingProject(null)} 
+          onSubmit={handleUpdateProject}
         />
       )}
     </div>

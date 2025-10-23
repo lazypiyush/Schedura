@@ -1,13 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './TaskModal.css'
 
-const TaskModal = ({ onClose, onSubmit }) => {
+const TaskModal = ({ task, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'medium',
     dueDate: ''
   })
+
+  // Pre-fill form if editing existing task
+  useEffect(() => {
+    if (task) {
+      setFormData({
+        title: task.title || '',
+        description: task.description || '',
+        priority: task.priority || 'medium',
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
+      })
+    }
+  }, [task])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -18,7 +30,7 @@ const TaskModal = ({ onClose, onSubmit }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content task-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Create New Task</h2>
+          <h2>{task ? 'Edit Task' : 'Create New Task'}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -59,15 +71,14 @@ const TaskModal = ({ onClose, onSubmit }) => {
             </div>
 
             <div className="form-group">
-                <label>Due Date</label>
-                <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                />
+              <label>Due Date</label>
+              <input
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
-
           </div>
 
           <div className="modal-actions">
@@ -75,7 +86,7 @@ const TaskModal = ({ onClose, onSubmit }) => {
               Cancel
             </button>
             <button type="submit" className="btn-submit">
-              Create Task
+              {task ? 'Update Task' : 'Create Task'}
             </button>
           </div>
         </form>

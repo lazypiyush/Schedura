@@ -30,6 +30,7 @@ const ProjectBoard = () => {
   const [isDark, setIsDark] = useState(false)
   const [focusedTaskId, setFocusedTaskId] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [editingTask, setEditingTask] = useState(null) // NEW: for editing
 
   const columns = [
     { id: 'todo', title: 'To Do', color: '#9E9E9E' },
@@ -105,6 +106,29 @@ const ProjectBoard = () => {
       setShowTaskModal(false)
     } catch (error) {
       console.error('Error creating task:', error)
+    }
+  }
+
+  // NEW: Handle task update
+  const handleUpdateTask = async (taskData) => {
+    try {
+      await tasksAPI.update(editingTask._id, taskData)
+      await fetchProjectData()
+      setEditingTask(null)
+    } catch (error) {
+      console.error('Error updating task:', error)
+    }
+  }
+
+  // NEW: Handle task delete
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Delete this task?')) return
+    
+    try {
+      await tasksAPI.delete(taskId)
+      await fetchProjectData()
+    } catch (error) {
+      console.error('Error deleting task:', error)
     }
   }
 
@@ -252,6 +276,8 @@ const ProjectBoard = () => {
                   setSelectedColumn(column.id)
                   setShowTaskModal(true)
                 }}
+                onEditTask={(task) => setEditingTask(task)} // NEW: pass edit handler
+                onDeleteTask={handleDeleteTask} // NEW: pass delete handler
                 onMoveTask={handleMoveTaskKeyboard}
                 focusedTaskId={focusedTaskId}
                 setFocusedTaskId={setFocusedTaskId}
@@ -265,10 +291,20 @@ const ProjectBoard = () => {
         </DndContext>
       </div>
 
+      {/* Create task modal */}
       {showTaskModal && (
         <TaskModal
           onClose={() => setShowTaskModal(false)}
           onSubmit={handleCreateTask}
+        />
+      )}
+
+      {/* NEW: Edit task modal */}
+      {editingTask && (
+        <TaskModal
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSubmit={handleUpdateTask}
         />
       )}
 

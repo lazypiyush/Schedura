@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import TaskCard from './TaskCard'
 import './Column.css'
 
-const Column = ({ column, tasks, onAddTask, onMoveTask, focusedTaskId, setFocusedTaskId, onTaskClick }) => {
+const Column = ({ column, tasks, onAddTask, onEditTask, onDeleteTask, onMoveTask, focusedTaskId, setFocusedTaskId, onTaskClick }) => {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
   return (
@@ -23,7 +23,9 @@ const Column = ({ column, tasks, onAddTask, onMoveTask, focusedTaskId, setFocuse
           {tasks.map(task => (
             <TaskCard 
               key={task._id} 
-              task={task} 
+              task={task}
+              onEditTask={onEditTask}        // NEW: Pass edit handler
+              onDeleteTask={onDeleteTask}    // NEW: Pass delete handler
               onMoveTask={onMoveTask}
               isFocused={task._id === focusedTaskId}
               setFocused={() => setFocusedTaskId(task._id)}

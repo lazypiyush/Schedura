@@ -72,6 +72,8 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-add:hover:not(:disabled) {
@@ -128,6 +130,8 @@
 
 .member-info {
   flex: 1;
+  min-width: 0; /* FIXED: Allows text truncation */
+  overflow: hidden;
 }
 
 .member-name {
@@ -135,12 +139,18 @@
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 4px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-email {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-remove {
@@ -153,6 +163,8 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0; /* FIXED: Prevents button from compressing */
 }
 
 .btn-remove:hover {
@@ -168,6 +180,8 @@
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0; /* FIXED: Prevents badge from compressing */
 }
 
 .no-members {

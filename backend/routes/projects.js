@@ -36,8 +36,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-
-
 // Get project by ID (only if user is a member)
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -87,6 +85,7 @@ router.post('/', auth, async (req, res) => {
       .populate('createdBy', 'name email')
       .populate('members', 'name email');
 
+    console.log('✅ Project created by:', req.user.id);
     res.json(populatedProject);
   } catch (err) {
     console.error('Error creating project:', err.message);
@@ -94,20 +93,38 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Update project (only owner)
+// Update project (only owner) - WITH DEBUG LOGGING
 router.put('/:id', auth, async (req, res) => {
   try {
     const { title, description, color } = req.body;
     const project = await Project.findById(req.params.id);
 
     if (!project) {
+      console.log('❌ Project not found:', req.params.id);
       return res.status(404).json({ msg: 'Project not found' });
     }
 
+    // DEBUG: Log IDs for comparison
+    console.log('🔍 Update Project Authorization Check:');
+    console.log('  📋 Project ID:', req.params.id);
+    console.log('  👤 Project createdBy:', project.createdBy.toString());
+    console.log('  🔑 Current user ID:', req.user.id);
+    console.log('  ✓ IDs match?', project.createdBy.toString() === req.user.id);
+
     if (project.createdBy.toString() !== req.user.id) {
-      return res.status(403).json({ msg: 'Not authorized' });
+      console.log('❌ Authorization FAILED - User is not the project owner');
+      return res.status(403).json({ 
+        msg: 'Not authorized to update this project',
+        debug: {
+          projectOwner: project.createdBy.toString(),
+          currentUser: req.user.id
+        }
+      });
     }
 
+    console.log('✅ Authorization passed - Updating project');
+
+    // Update fields
     if (title) project.title = title;
     if (description !== undefined) project.description = description;
     if (color) project.color = color;
@@ -118,9 +135,10 @@ router.put('/:id', auth, async (req, res) => {
       .populate('createdBy', 'name email')
       .populate('members', 'name email');
 
+    console.log('✅ Project updated successfully:', project.title);
     res.json(updatedProject);
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ Update project error:', err.message);
     res.status(500).send('Server error');
   }
 });
@@ -134,11 +152,15 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Project not found' });
     }
 
+    console.log('🗑️ Delete attempt - Owner:', project.createdBy.toString(), 'User:', req.user.id);
+
     if (project.createdBy.toString() !== req.user.id) {
+      console.log('❌ Delete denied - Not the owner');
       return res.status(403).json({ msg: 'Not authorized' });
     }
 
     await Project.findByIdAndDelete(req.params.id);
+    console.log('✅ Project deleted:', project.title);
     res.json({ msg: 'Project removed' });
   } catch (err) {
     console.error(err.message);
