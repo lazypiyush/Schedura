@@ -6,15 +6,15 @@ import ProjectModal from '../components/ProjectModal'
 import './Dashboard.css'
 
 const Dashboard = () => {
-  const { user } = useUser()
-  useAuth() // Sync with backend
+  const { user, isLoaded, isSignedIn } = useUser()
+  const { syncComplete } = useAuth() // Modified to get sync status instead
   
   const [isDark, setIsDark] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState(null)
-  const [editingProject, setEditingProject] = useState(null) // NEW: for editing
+  const [editingProject, setEditingProject] = useState(null)
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light'
@@ -22,17 +22,25 @@ const Dashboard = () => {
     document.documentElement.setAttribute('data-theme', savedTheme)
   }, [])
 
-  // Detect user change and refresh data
+  // Wait for Clerk and auth sync before loading projects
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setLoading(true)
+      return
+    }
+
     if (user?.id) {
       const storedUserId = localStorage.getItem('lastUserId');
       
       // Check if user changed
       if (storedUserId && storedUserId !== user.id) {
-        console.log('🔄 User changed! Reloading page...');
+        console.log('🔄 User changed! Clearing data...');
         localStorage.setItem('lastUserId', user.id);
         localStorage.removeItem('token');
-        window.location.href = '/dashboard';
+        setProjects([]);
+        setLoading(true);
+        // Don't reload, just refetch
+        fetchProjects();
         return;
       }
       
@@ -40,10 +48,10 @@ const Dashboard = () => {
       localStorage.setItem('lastUserId', user.id);
       setCurrentUserId(user.id);
       
-      // Clear old data and fetch new
-      setProjects([]);
-      setLoading(true);
-      fetchProjects();
+      // Fetch projects after auth sync completes
+      if (syncComplete) {
+        fetchProjects();
+      }
       
     } else if (!user) {
       // User logged out
@@ -52,10 +60,11 @@ const Dashboard = () => {
       localStorage.removeItem('lastUserId');
       localStorage.removeItem('token');
     }
-  }, [user?.id]);
+  }, [user?.id, isLoaded, isSignedIn, syncComplete]);
 
   const fetchProjects = async () => {
     try {
+      setLoading(true);
       const response = await projectsAPI.getAll()
       setProjects(response.data)
     } catch (error) {
@@ -83,7 +92,6 @@ const Dashboard = () => {
     }
   }
 
-  // NEW: Handle project update
   const handleUpdateProject = async (projectData) => {
     try {
       await projectsAPI.update(editingProject._id, projectData)
@@ -109,7 +117,8 @@ const Dashboard = () => {
 
   const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0), 0)
 
-  if (loading) {
+  // Show loading state while Clerk initializes
+  if (!isLoaded || loading) {
     return (
       <div className="dashboard">
         <nav className="navbar">
@@ -118,7 +127,7 @@ const Dashboard = () => {
             <h2>SCHEDURA</h2>
           </div>
         </nav>
-        <div className="dashboard-content">
+        <div className="dashboard-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
           <h2>Loading...</h2>
         </div>
       </div>
@@ -259,7 +268,6 @@ const Dashboard = () => {
                       <h3>{project.title}</h3>
                     </div>
                     <div className="project-actions">
-                      {/* NEW: Edit button */}
                       <button 
                         className="btn-edit-project"
                         onClick={(e) => {
@@ -270,7 +278,6 @@ const Dashboard = () => {
                       >
                         ✏️
                       </button>
-                      {/* Delete button */}
                       <button 
                         className="btn-delete-project"
                         onClick={async (e) => {
@@ -331,7 +338,6 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Create modal */}
       {showModal && (
         <ProjectModal 
           onClose={() => setShowModal(false)} 
@@ -339,7 +345,6 @@ const Dashboard = () => {
         />
       )}
 
-      {/* NEW: Edit modal */}
       {editingProject && (
         <ProjectModal 
           project={editingProject}
