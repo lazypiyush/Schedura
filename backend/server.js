@@ -3,6 +3,8 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const cron = require('node-cron');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -100,6 +102,25 @@ io.on('connection', (socket) => {
 // Make io accessible to routes
 app.set('socketio', io);
 
+// ⏰ Self-Ping Cron Job - Keep server awake on Render
+if (process.env.NODE_ENV === 'production') {
+  const BACKEND_URL = process.env.BACKEND_URL || 'https://schedura-backend.onrender.com';
+  
+  // Ping every 14 minutes (before Render's 15-min sleep)
+  cron.schedule('*/14 * * * *', async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/health`);
+      console.log(`✅ Self-ping successful - Server kept alive at ${new Date().toISOString()}`);
+      console.log(`   Status: ${response.data.status}`);
+    } catch (error) {
+      console.error('❌ Self-ping failed:', error.message);
+    }
+  });
+  
+  console.log('⏰ Self-ping cron job started (runs every 14 minutes)');
+  console.log(`   Target URL: ${BACKEND_URL}/health`);
+}
+
 // Health check endpoint (for deployment monitoring)
 app.get('/health', (req, res) => {
   res.json({ 
@@ -107,7 +128,8 @@ app.get('/health', (req, res) => {
     message: 'Schedura API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    uptime: process.uptime()
   });
 });
 
