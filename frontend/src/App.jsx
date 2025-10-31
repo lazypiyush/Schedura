@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
+import Login from './pages/Login'
+import SignUpPage from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
 import ProjectBoard from './pages/ProjectBoard'
 import './App.css'
@@ -7,6 +9,35 @@ import './App.css'
 function App() {
   return (
     <Routes>
+      {/* Public Routes */}
+      <Route
+        path="/login"
+        element={
+          <>
+            <SignedOut>
+              <Login />
+            </SignedOut>
+            <SignedIn>
+              <Navigate to="/dashboard" replace />
+            </SignedIn>
+          </>
+        }
+      />
+
+      <Route
+        path="/sign-up"
+        element={
+          <>
+            <SignedOut>
+              <SignUpPage />
+            </SignedOut>
+            <SignedIn>
+              <Navigate to="/dashboard" replace />
+            </SignedIn>
+          </>
+        }
+      />
+
       {/* Protected Routes */}
       <Route
         path="/dashboard"
@@ -16,7 +47,7 @@ function App() {
               <Dashboard />
             </SignedIn>
             <SignedOut>
-              <RedirectToSignIn />
+              <Navigate to="/login" replace />
             </SignedOut>
           </>
         }
@@ -30,29 +61,14 @@ function App() {
               <ProjectBoard />
             </SignedIn>
             <SignedOut>
-              <RedirectToSignIn />
+              <Navigate to="/login" replace />
             </SignedOut>
           </>
         }
       />
 
-      {/* Root redirects to dashboard */}
-      <Route 
-        path="/" 
-        element={
-          <>
-            <SignedIn>
-              <Navigate to="/dashboard" replace />
-            </SignedIn>
-            <SignedOut>
-              <RedirectToSignIn />
-            </SignedOut>
-          </>
-        } 
-      />
-
-      {/* Catch all - redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Default Route */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
 }
