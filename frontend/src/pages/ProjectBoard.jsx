@@ -13,6 +13,7 @@ import TaskDetailModal from '../components/TaskDetailModal'
 import Column from '../components/Column'
 import './ProjectBoard.css'
 
+
 const ProjectBoard = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ const ProjectBoard = () => {
   const [loading, setLoading] = useState(true)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showTeamModal, setShowTeamModal] = useState(false)
-  const [showTeamList, setShowTeamList] = useState(false) // NEW: for team popup
+  const [showTeamList, setShowTeamList] = useState(false)
   const [selectedColumn, setSelectedColumn] = useState(null)
   const [activeTask, setActiveTask] = useState(null)
   const [isDark, setIsDark] = useState(false)
@@ -56,6 +57,7 @@ const ProjectBoard = () => {
     fetchProjectData()
   }, [id])
 
+  // ✅ SOCKET.IO - Join project and listen for comments
   useEffect(() => {
     if (socket && id) {
       socket.emit('join-project', id)
@@ -68,6 +70,46 @@ const ProjectBoard = () => {
 
       return () => {
         socket.off('comment-added')
+      }
+    }
+  }, [socket, id])
+
+  // ✅ REAL-TIME TASK UPDATES - Listen for teammate changes
+  useEffect(() => {
+    if (socket && id) {
+      // Listen for task movements from other users
+      socket.on('task-moved', (data) => {
+        console.log('🔄 Task moved by teammate:', data)
+        
+        // Update UI without API call
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task._id === data.taskId
+              ? { ...task, status: data.toStatus }
+              : task
+          )
+        )
+      })
+
+      // Listen for task updates
+      socket.on('task-updated', (data) => {
+        console.log('📋 Task updated by teammate:', data)
+        
+        // Refresh if important fields changed
+        if (data.title || data.description || data.priority || data.dueDate) {
+          setTasks(prevTasks =>
+            prevTasks.map(task =>
+              task._id === data.taskId
+                ? { ...task, ...data.updates }
+                : task
+            )
+          )
+        }
+      })
+
+      return () => {
+        socket.off('task-moved')
+        socket.off('task-updated')
       }
     }
   }, [socket, id])
@@ -112,6 +154,18 @@ const ProjectBoard = () => {
     try {
       await tasksAPI.update(editingTask._id, taskData)
       await fetchProjectData()
+
+      // ✅ EMIT SOCKET EVENT - Notify all users
+      if (socket) {
+        socket.emit('task-updated', {
+          taskId: editingTask._id,
+          updates: taskData,
+          projectId: id,
+          userId: user?.id,
+          userName: user?.firstName
+        })
+      }
+
       setEditingTask(null)
     } catch (error) {
       console.error('Error updating task:', error)
@@ -142,6 +196,7 @@ const ProjectBoard = () => {
     setActiveTask(task)
   }
 
+  // ✅ UPDATED - With Socket.IO emit for real-time sync
   const handleDragEnd = async (event) => {
     const { active, over } = event
     setActiveTask(null)
@@ -156,11 +211,25 @@ const ProjectBoard = () => {
     const currentTask = tasks.find(t => t._id === taskId)
     if (!currentTask || currentTask.status === newStatus) return
 
+    // ✅ Optimistic UI update
     setTasks(tasks.map(task =>
       task._id === taskId ? { ...task, status: newStatus } : task
     ))
+
     try {
       await tasksAPI.update(taskId, { status: newStatus })
+
+      // ✅ EMIT SOCKET EVENT - Notify all users
+      if (socket) {
+        socket.emit('task-moved', {
+          taskId: taskId,
+          fromStatus: currentTask.status,
+          toStatus: newStatus,
+          projectId: id,
+          userId: user?.id,
+          userName: user?.firstName
+        })
+      }
     } catch (error) {
       console.error('Error updating task:', error)
       await fetchProjectData()
@@ -170,7 +239,7 @@ const ProjectBoard = () => {
   const handleMoveTaskKeyboard = async (taskId, currentStatus, direction) => {
     const columnOrder = ['todo', 'in-progress', 'review', 'done']
     const currentIndex = columnOrder.indexOf(currentStatus)
-    let newIndex;
+    let newIndex
     if (direction === 'prev') {
       newIndex = Math.max(0, currentIndex - 1)
     } else {
@@ -178,12 +247,26 @@ const ProjectBoard = () => {
     }
     const newStatus = columnOrder[newIndex]
     if (newStatus === currentStatus) return
+
     setTasks(tasks.map(task =>
       task._id === taskId ? { ...task, status: newStatus } : task
     ))
     setFocusedTaskId(taskId)
+
     try {
       await tasksAPI.update(taskId, { status: newStatus })
+
+      // ✅ EMIT SOCKET EVENT for keyboard navigation too
+      if (socket) {
+        socket.emit('task-moved', {
+          taskId: taskId,
+          fromStatus: currentStatus,
+          toStatus: newStatus,
+          projectId: id,
+          userId: user?.id,
+          userName: user?.firstName
+        })
+      }
     } catch (error) {
       console.error('Error updating task:', error)
       await fetchProjectData()
@@ -245,7 +328,7 @@ const ProjectBoard = () => {
             <h1>{project.title}</h1>
             <p>{project.description}</p>
 
-            {/* NEW: Team Members Display */}
+            {/* Team Members Display */}
             <div className="team-members-display">
               <div 
                 className="members-preview" 
