@@ -6,25 +6,32 @@ import './TaskDetailModal.css'
 
 const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
   const [comments, setComments] = useState([])
+  const [displayedComments, setDisplayedComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [displayCount, setDisplayCount] = useState(10) // Show 10 initially
+  const [hasMore, setHasMore] = useState(false)
   const socket = useSocket()
   const { user } = useUser()
+
+  const COMMENTS_PER_PAGE = 10
 
   useEffect(() => {
     fetchComments()
     
     if (socket) {
-      // Listen for real-time comment updates
       socket.on('comment-added', (data) => {
         if (data.taskId === task._id) {
           console.log('💬 Real-time comment received:', data.comment)
-          setComments(prev => [data.comment, ...prev])
+          setComments(prev => {
+            const exists = prev.some(c => c._id === data.comment._id)
+            if (exists) return prev
+            return [data.comment, ...prev]
+          })
         }
       })
 
-      // Listen for comment deletions
       socket.on('comment-deleted', (data) => {
         if (data.taskId === task._id) {
           console.log('🗑️ Comment deleted:', data.commentId)
@@ -41,6 +48,13 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
     }
   }, [socket, task._id])
 
+  // Update displayed comments when comments or displayCount changes
+  useEffect(() => {
+    const displayed = comments.slice(0, displayCount)
+    setDisplayedComments(displayed)
+    setHasMore(comments.length > displayCount)
+  }, [comments, displayCount])
+
   const fetchComments = async () => {
     try {
       setRefreshing(true)
@@ -54,6 +68,10 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
     }
   }
 
+  const handleLoadMore = () => {
+    setDisplayCount(prev => prev + COMMENTS_PER_PAGE)
+  }
+
   const handleAddComment = async (e) => {
     e.preventDefault()
     if (!newComment.trim()) return
@@ -64,11 +82,14 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
         task: task._id
       })
       
-      // Optimistic update - add comment immediately
-      setComments(prev => [res.data, ...prev])
+      setComments(prev => {
+        const exists = prev.some(c => c._id === res.data._id)
+        if (exists) return prev
+        return [res.data, ...prev]
+      })
+      
       setNewComment('')
       
-      // Emit socket event for real-time updates to other users
       if (socket) {
         socket.emit('new-comment', {
           taskId: task._id,
@@ -77,11 +98,9 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
         })
       }
       
-      // Update task comment count in parent
       if (onUpdate) onUpdate()
     } catch (err) {
       console.error('Error adding comment:', err)
-      // Revert on error
       fetchComments()
     }
   }
@@ -92,10 +111,8 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
     try {
       await commentsAPI.delete(commentId)
       
-      // Optimistic update
       setComments(comments.filter(c => c._id !== commentId))
       
-      // Emit socket event for other users
       if (socket) {
         socket.emit('comment-deleted', { 
           taskId: task._id, 
@@ -104,7 +121,6 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
         })
       }
       
-      // Update task comment count
       if (onUpdate) onUpdate()
     } catch (err) {
       console.error('Error deleting comment:', err)
@@ -129,14 +145,20 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
           )}
 
           <div className="task-section">
-            {/* Comments Header with Refresh Button */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center',
               marginBottom: '16px'
             }}>
-              <h3>Comments ({comments.length})</h3>
+              <h3>
+                Comments ({comments.length})
+                {displayedComments.length < comments.length && (
+                  <span style={{ fontSize: '13px', color: '#999', marginLeft: '8px' }}>
+                    Showing {displayedComments.length} of {comments.length}
+                  </span>
+                )}
+              </h3>
               <button
                 onClick={fetchComments}
                 disabled={refreshing}
@@ -174,41 +196,73 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
             <div className="comments-list">
               {loading ? (
                 <p>Loading comments...</p>
-              ) : comments.length === 0 ? (
+              ) : displayedComments.length === 0 ? (
                 <p className="no-comments">No comments yet. Be the first!</p>
               ) : (
-                comments.map(comment => (
-                  <div key={comment._id} className="comment">
-                    <div className="comment-header">
-                      <div className="comment-author">
-                        {comment.createdBy.avatar ? (
-                          <img 
-                            src={comment.createdBy.avatar} 
-                            alt={comment.createdBy.name}
-                            className="avatar-img"
-                          />
-                        ) : (
-                          <div className="avatar">{comment.createdBy.name[0]}</div>
-                        )}
-                        <div>
-                          <strong>{comment.createdBy.name}</strong>
-                          <span className="comment-time">
-                            {new Date(comment.createdAt).toLocaleString()}
-                          </span>
+                <>
+                  {displayedComments.map(comment => (
+                    <div key={comment._id} className="comment">
+                      <div className="comment-header">
+                        <div className="comment-author">
+                          {comment.createdBy?.avatar ? (
+                            <img 
+                              src={comment.createdBy.avatar} 
+                              alt={comment.createdBy.name}
+                              className="avatar-img"
+                            />
+                          ) : (
+                            <div className="avatar">
+                              {comment.createdBy?.name?.[0] || 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <strong>{comment.createdBy?.name || 'Unknown User'}</strong>
+                            <span className="comment-time">
+                              {new Date(comment.createdAt).toLocaleString()}
+                            </span>
+                          </div>
                         </div>
+                        {comment.createdBy?._id === user?.id && (
+                          <button 
+                            className="delete-btn"
+                            onClick={() => handleDeleteComment(comment._id)}
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
-                      {comment.createdBy._id === user?.id && (
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDeleteComment(comment._id)}
-                        >
-                          🗑️
-                        </button>
-                      )}
+                      <p className="comment-content">{comment.content}</p>
                     </div>
-                    <p className="comment-content">{comment.content}</p>
-                  </div>
-                ))
+                  ))}
+                  
+                  {/* Load More Button */}
+                  {hasMore && (
+                    <button
+                      onClick={handleLoadMore}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        marginTop: '16px',
+                        background: 'transparent',
+                        border: '2px dashed #2196F3',
+                        borderRadius: '8px',
+                        color: '#2196F3',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'rgba(33, 150, 243, 0.1)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'transparent'
+                      }}
+                    >
+                      ⬇️ Load More Comments ({comments.length - displayedComments.length} remaining)
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
