@@ -8,6 +8,7 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const socket = useSocket()
   const { user } = useUser()
 
@@ -42,12 +43,14 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
 
   const fetchComments = async () => {
     try {
+      setRefreshing(true)
       const res = await commentsAPI.getByTask(task._id)
       setComments(res.data)
     } catch (err) {
       console.error('Error fetching comments:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -64,6 +67,15 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
       // Optimistic update - add comment immediately
       setComments(prev => [res.data, ...prev])
       setNewComment('')
+      
+      // Emit socket event for real-time updates to other users
+      if (socket) {
+        socket.emit('new-comment', {
+          taskId: task._id,
+          projectId,
+          comment: res.data
+        })
+      }
       
       // Update task comment count in parent
       if (onUpdate) onUpdate()
@@ -117,7 +129,35 @@ const TaskDetailModal = ({ task, projectId, onClose, onUpdate }) => {
           )}
 
           <div className="task-section">
-            <h3>Comments ({comments.length})</h3>
+            {/* Comments Header with Refresh Button */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <h3>Comments ({comments.length})</h3>
+              <button
+                onClick={fetchComments}
+                disabled={refreshing}
+                style={{
+                  padding: '6px 14px',
+                  background: refreshing ? '#999' : '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: refreshing ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {refreshing ? '⟳' : '🔄'} {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
             
             <form onSubmit={handleAddComment} className="comment-form">
               <textarea
