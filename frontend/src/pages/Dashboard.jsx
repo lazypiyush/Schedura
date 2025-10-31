@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { projectsAPI } from '../services/api'
 import ProjectModal from '../components/ProjectModal'
-import InstallButton from '../components/InstallButton' // ✅ ADD THIS
+import InstallButton from '../components/InstallButton' // ✅ ADD BACK
 import './Dashboard.css'
 
 const Dashboard = () => {
   const { user, isLoaded } = useUser()
-  useAuth() // Sync in background
+  useAuth()
   
   const [isDark, setIsDark] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -22,14 +22,11 @@ const Dashboard = () => {
     document.documentElement.setAttribute('data-theme', savedTheme)
   }, [])
 
-  // Fetch projects when user loaded
   useEffect(() => {
     if (isLoaded && user?.id) {
-      // Small delay to let auth sync complete
       const timer = setTimeout(() => {
         fetchProjects()
       }, 1000)
-      
       return () => clearTimeout(timer)
     }
   }, [isLoaded, user?.id])
@@ -41,7 +38,6 @@ const Dashboard = () => {
       setProjects(response.data)
     } catch (error) {
       console.error('Error fetching projects:', error)
-      // Show empty state on error
       setProjects([])
     } finally {
       setLoading(false)
@@ -75,7 +71,6 @@ const Dashboard = () => {
     }
   }
 
-  // Calculate stats
   const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0)
   const completedProjects = projects.filter(project => {
     const projectTasks = project.tasks || []
@@ -87,13 +82,14 @@ const Dashboard = () => {
   )
   const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0), 0)
 
-  // Loading state
   if (!isLoaded) {
     return (
       <div className="dashboard">
         <nav className="navbar">
           <div className="navbar-brand">
-            <img src="/logo.svg" alt="Schedura" className="navbar-logo" /> {/* ✅ LOGO */}
+            <div className="navbar-logo-wrapper">
+              <img src="/logo-white.jpg" alt="Schedura" className="navbar-logo" />
+            </div>
             <h2>Schedura</h2>
           </div>
         </nav>
@@ -108,12 +104,13 @@ const Dashboard = () => {
     <div className="dashboard">
       <nav className="navbar">
         <div className="navbar-brand">
-          <img src="/logo.svg" alt="Schedura" className="navbar-logo" /> {/* ✅ LOGO */}
+          <div className="navbar-logo-wrapper">
+            <img src="/logo-white.jpg" alt="Schedura" className="navbar-logo" />
+          </div>
           <h2>Schedura</h2>
         </div>
         <div className="navbar-actions">
-          {/* ✅ INSTALL BUTTON */}
-          <InstallButton />
+          <InstallButton /> {/* ✅ INSTALL BUTTON */}
           
           <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle theme">
             {isDark ? '☀️' : '🌙'}

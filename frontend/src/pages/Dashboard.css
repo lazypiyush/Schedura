@@ -54,9 +54,10 @@
   }
 }
 
+/* Title - WHITE TEXT */
 .navbar-brand h2 {
-  color: white;
-  font-size: 24px;
+  color: #FFFFFF;
+  font-size: 22px;
   font-weight: 700;
   margin: 0;
   text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25);
@@ -584,10 +585,10 @@
 }
 
 .navbar-brand h2 {
-  background: linear-gradient(135deg, #2196F3, #1976D2);
+  /* background: linear-gradient(135deg, #2196F3, #1976D2);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: transparent; */
   font-weight: 700;
   letter-spacing: 0.5px;
-  font-size: 20px;
+  font-size: 25px;
 }
