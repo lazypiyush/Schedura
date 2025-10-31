@@ -19,11 +19,8 @@ const Login = () => {
           routing="path" 
           path="/login"
           signUpUrl="/sign-up"
-          // ✅ Capacitor fixes - stay in app
-          fallbackRedirectUrl="/dashboard"
-          redirectUrl="/dashboard"
           appearance={{
-            baseTheme: 'light',
+            baseTheme: undefined, // Forces light theme
             variables: {
               colorPrimary: '#2196F3',
               colorBackground: '#ffffff',
