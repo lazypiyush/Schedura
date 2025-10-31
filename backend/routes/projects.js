@@ -15,8 +15,8 @@ router.get('/', auth, async (req, res) => {
         { members: req.user.id }
       ]
     })
-    .populate('createdBy', 'name email')
-    .populate('members', 'name email')
+    .populate('createdBy', 'name email avatar') // AVATAR ADDED
+    .populate('members', 'name email avatar')    // AVATAR ADDED
     .sort({ createdAt: -1 });
 
     // Fetch tasks for each project
@@ -40,8 +40,8 @@ router.get('/', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('members', 'name email');
+      .populate('createdBy', 'name email avatar') // AVATAR ADDED
+      .populate('members', 'name email avatar');   // AVATAR ADDED
 
     if (
       !project ||
@@ -82,8 +82,8 @@ router.post('/', auth, async (req, res) => {
     const project = await newProject.save();
 
     const populatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email')
-      .populate('members', 'name email');
+      .populate('createdBy', 'name email avatar') // AVATAR ADDED
+      .populate('members', 'name email avatar');   // AVATAR ADDED
 
     console.log('✅ Project created by:', req.user.id);
     res.json(populatedProject);
@@ -132,8 +132,8 @@ router.put('/:id', auth, async (req, res) => {
     await project.save();
 
     const updatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email')
-      .populate('members', 'name email');
+      .populate('createdBy', 'name email avatar') // AVATAR ADDED
+      .populate('members', 'name email avatar');   // AVATAR ADDED
 
     console.log('✅ Project updated successfully:', project.title);
     res.json(updatedProject);
@@ -192,8 +192,8 @@ router.post('/:id/members', auth, async (req, res) => {
     await project.save();
 
     const updatedProject = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('members', 'name email');
+      .populate('createdBy', 'name email avatar') // AVATAR ADDED
+      .populate('members', 'name email avatar');   // AVATAR ADDED
 
     res.json(updatedProject);
   } catch (err) {
@@ -218,8 +218,8 @@ router.delete('/:id/members/:userId', auth, async (req, res) => {
     await project.save();
 
     const updatedProject = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('members', 'name email');
+      .populate('createdBy', 'name email avatar') // AVATAR ADDED
+      .populate('members', 'name email avatar');   // AVATAR ADDED
     res.json(updatedProject);
   } catch (err) {
     console.error(err.message);

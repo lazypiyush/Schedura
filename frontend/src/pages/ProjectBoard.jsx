@@ -25,12 +25,13 @@ const ProjectBoard = () => {
   const [loading, setLoading] = useState(true)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showTeamModal, setShowTeamModal] = useState(false)
+  const [showTeamList, setShowTeamList] = useState(false) // NEW: for team popup
   const [selectedColumn, setSelectedColumn] = useState(null)
   const [activeTask, setActiveTask] = useState(null)
   const [isDark, setIsDark] = useState(false)
   const [focusedTaskId, setFocusedTaskId] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
-  const [editingTask, setEditingTask] = useState(null) // NEW: for editing
+  const [editingTask, setEditingTask] = useState(null)
 
   const columns = [
     { id: 'todo', title: 'To Do', color: '#9E9E9E' },
@@ -55,16 +56,14 @@ const ProjectBoard = () => {
     fetchProjectData()
   }, [id])
 
-  // Join project room for real-time updates
   useEffect(() => {
     if (socket && id) {
       socket.emit('join-project', id)
       console.log('✅ Joined project room:', id)
 
-      // Listen for new comments
       socket.on('comment-added', (data) => {
         console.log('💬 New comment added:', data)
-        fetchProjectData() // Refresh to update comment count
+        fetchProjectData()
       })
 
       return () => {
@@ -109,7 +108,6 @@ const ProjectBoard = () => {
     }
   }
 
-  // NEW: Handle task update
   const handleUpdateTask = async (taskData) => {
     try {
       await tasksAPI.update(editingTask._id, taskData)
@@ -120,7 +118,6 @@ const ProjectBoard = () => {
     }
   }
 
-  // NEW: Handle task delete
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm('Delete this task?')) return
     
@@ -244,10 +241,82 @@ const ProjectBoard = () => {
 
       <div className="board-content">
         <div className="board-header">
-          <div>
+          <div className="board-header-left">
             <h1>{project.title}</h1>
             <p>{project.description}</p>
+
+            {/* NEW: Team Members Display */}
+            <div className="team-members-display">
+              <div 
+                className="members-preview" 
+                onClick={() => setShowTeamList(!showTeamList)}
+              >
+                <div className="members-avatars">
+                  {project.members?.slice(0, 5).map((member, index) => (
+                    <div 
+                      key={member._id} 
+                      className="member-avatar-item"
+                      style={{ zIndex: project.members.length - index }}
+                    >
+                      {member.avatar ? (
+                        <img src={member.avatar} alt={member.name} />
+                      ) : (
+                        <div className="avatar-placeholder">
+                          {member.name?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {project.createdBy._id === member._id && (
+                        <div className="admin-badge">👑</div>
+                      )}
+                    </div>
+                  ))}
+                  {project.members?.length > 5 && (
+                    <div className="member-avatar-item more-members">
+                      +{project.members.length - 5}
+                    </div>
+                  )}
+                </div>
+                <span className="team-count">
+                  {project.members?.length || 0} members • Click to view
+                </span>
+              </div>
+
+              {/* Team List Popup */}
+              {showTeamList && (
+                <div className="team-list-popup">
+                  <div className="team-list-header">
+                    <h3>Team Members</h3>
+                    <button onClick={() => setShowTeamList(false)}>✕</button>
+                  </div>
+                  <div className="team-list-items">
+                    {project.members?.map((member) => (
+                      <div key={member._id} className="team-member-row">
+                        <div className="member-avatar-small">
+                          {member.avatar ? (
+                            <img src={member.avatar} alt={member.name} />
+                          ) : (
+                            <div className="avatar-placeholder-small">
+                              {member.name?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="member-details">
+                          <div className="member-name-row">
+                            <span className="member-name">{member.name}</span>
+                            {project.createdBy._id === member._id && (
+                              <span className="admin-label">👑 Admin</span>
+                            )}
+                          </div>
+                          <span className="member-email">{member.email}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
           <div className="board-actions">
             <div className="board-stats">
               <span className="stat">{tasks.length} tasks</span>
@@ -276,8 +345,8 @@ const ProjectBoard = () => {
                   setSelectedColumn(column.id)
                   setShowTaskModal(true)
                 }}
-                onEditTask={(task) => setEditingTask(task)} // NEW: pass edit handler
-                onDeleteTask={handleDeleteTask} // NEW: pass delete handler
+                onEditTask={(task) => setEditingTask(task)}
+                onDeleteTask={handleDeleteTask}
                 onMoveTask={handleMoveTaskKeyboard}
                 focusedTaskId={focusedTaskId}
                 setFocusedTaskId={setFocusedTaskId}
@@ -291,7 +360,6 @@ const ProjectBoard = () => {
         </DndContext>
       </div>
 
-      {/* Create task modal */}
       {showTaskModal && (
         <TaskModal
           onClose={() => setShowTaskModal(false)}
@@ -299,7 +367,6 @@ const ProjectBoard = () => {
         />
       )}
 
-      {/* NEW: Edit task modal */}
       {editingTask && (
         <TaskModal
           task={editingTask}
