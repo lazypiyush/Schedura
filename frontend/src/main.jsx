@@ -38,6 +38,8 @@ createRoot(document.getElementById('root')).render(
       }}
       afterSignInUrl="/dashboard"
       afterSignUpUrl="/dashboard"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
     >
       <BrowserRouter>
         <SocketProvider>

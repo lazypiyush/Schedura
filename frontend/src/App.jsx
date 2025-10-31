@@ -1,7 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SignedIn, SignedOut, RedirectToSignIn, useAuth } from '@clerk/clerk-react'
-import Login from './pages/Login'
-import SignUpPage from './pages/SignUp'
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
 import Dashboard from './pages/Dashboard'
 import ProjectBoard from './pages/ProjectBoard'
 import './App.css'
@@ -9,35 +7,6 @@ import './App.css'
 function App() {
   return (
     <Routes>
-      {/* Public Routes - CHANGED /login to /sign-in */}
-      <Route
-        path="/sign-in/*"
-        element={
-          <>
-            <SignedOut>
-              <Login />
-            </SignedOut>
-            <SignedIn>
-              <Navigate to="/dashboard" replace />
-            </SignedIn>
-          </>
-        }
-      />
-
-      <Route
-        path="/sign-up/*"
-        element={
-          <>
-            <SignedOut>
-              <SignUpPage />
-            </SignedOut>
-            <SignedIn>
-              <Navigate to="/dashboard" replace />
-            </SignedIn>
-          </>
-        }
-      />
-
       {/* Protected Routes */}
       <Route
         path="/dashboard"
@@ -67,11 +36,23 @@ function App() {
         }
       />
 
-      {/* Default Route */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      
-      {/* Redirect old /login to /sign-in */}
-      <Route path="/login" element={<Navigate to="/sign-in" replace />} />
+      {/* Root redirects to dashboard */}
+      <Route 
+        path="/" 
+        element={
+          <>
+            <SignedIn>
+              <Navigate to="/dashboard" replace />
+            </SignedIn>
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          </>
+        } 
+      />
+
+      {/* Catch all - redirect to dashboard */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
