@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { projectsAPI } from '../services/api'
 import ProjectModal from '../components/ProjectModal'
+import InstallButton from '../components/InstallButton' // ✅ ADD THIS
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -92,8 +93,8 @@ const Dashboard = () => {
       <div className="dashboard">
         <nav className="navbar">
           <div className="navbar-brand">
-            <div className="logo">📋</div>
-            <h2>SCHEDURA</h2>
+            <img src="/logo.svg" alt="Schedura" className="navbar-logo" /> {/* ✅ LOGO */}
+            <h2>Schedura</h2>
           </div>
         </nav>
         <div className="dashboard-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -107,13 +108,17 @@ const Dashboard = () => {
     <div className="dashboard">
       <nav className="navbar">
         <div className="navbar-brand">
-          <div className="logo">📋</div>
-          <h2>SCHEDURA</h2>
+          <img src="/logo.svg" alt="Schedura" className="navbar-logo" /> {/* ✅ LOGO */}
+          <h2>Schedura</h2>
         </div>
         <div className="navbar-actions">
+          {/* ✅ INSTALL BUTTON */}
+          <InstallButton />
+          
           <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle theme">
             {isDark ? '☀️' : '🌙'}
           </button>
+          
           <div className="navbar-user">
             <span className="user-greeting">
               <span className="greeting-text">Welcome back,</span>

@@ -574,3 +574,20 @@
   background: rgba(244, 67, 54, 0.1);
   transform: scale(1.1);
 }
+
+.navbar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid #2196F3;
+  margin-right: 12px;
+}
+
+.navbar-brand h2 {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 20px;
+}
