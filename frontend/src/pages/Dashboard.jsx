@@ -6,14 +6,13 @@ import ProjectModal from '../components/ProjectModal'
 import './Dashboard.css'
 
 const Dashboard = () => {
-  const { user, isLoaded, isSignedIn } = useUser()
-  const { syncComplete } = useAuth() // Modified to get sync status instead
+  const { user, isLoaded } = useUser()
+  useAuth() // Sync in background
   
   const [isDark, setIsDark] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currentUserId, setCurrentUserId] = useState(null)
   const [editingProject, setEditingProject] = useState(null)
 
   useEffect(() => {
@@ -22,53 +21,26 @@ const Dashboard = () => {
     document.documentElement.setAttribute('data-theme', savedTheme)
   }, [])
 
-  // Wait for Clerk and auth sync before loading projects
+  // Fetch projects when user loaded
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setLoading(true)
-      return
+    if (isLoaded && user?.id) {
+      // Small delay to let auth sync complete
+      const timer = setTimeout(() => {
+        fetchProjects()
+      }, 1000)
+      
+      return () => clearTimeout(timer)
     }
-
-    if (user?.id) {
-      const storedUserId = localStorage.getItem('lastUserId');
-      
-      // Check if user changed
-      if (storedUserId && storedUserId !== user.id) {
-        console.log('🔄 User changed! Clearing data...');
-        localStorage.setItem('lastUserId', user.id);
-        localStorage.removeItem('token');
-        setProjects([]);
-        setLoading(true);
-        // Don't reload, just refetch
-        fetchProjects();
-        return;
-      }
-      
-      // First time or same user
-      localStorage.setItem('lastUserId', user.id);
-      setCurrentUserId(user.id);
-      
-      // Fetch projects after auth sync completes
-      if (syncComplete) {
-        fetchProjects();
-      }
-      
-    } else if (!user) {
-      // User logged out
-      setProjects([]);
-      setCurrentUserId(null);
-      localStorage.removeItem('lastUserId');
-      localStorage.removeItem('token');
-    }
-  }, [user?.id, isLoaded, isSignedIn, syncComplete]);
+  }, [isLoaded, user?.id])
 
   const fetchProjects = async () => {
     try {
-      setLoading(true);
+      setLoading(true)
       const response = await projectsAPI.getAll()
       setProjects(response.data)
     } catch (error) {
       console.error('Error fetching projects:', error)
+      // Show empty state on error
       setProjects([])
     } finally {
       setLoading(false)
@@ -102,23 +74,20 @@ const Dashboard = () => {
     }
   }
 
-  // Calculate stats from real data
+  // Calculate stats
   const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0)
-
   const completedProjects = projects.filter(project => {
     const projectTasks = project.tasks || []
     if (projectTasks.length === 0) return false
     return projectTasks.every(task => task.status === 'done')
   }).length
-
   const inProgressTasks = totalTasks - projects.reduce((sum, p) => 
     sum + (p.tasks?.filter(t => t.status === 'done').length || 0), 0
   )
-
   const totalMembers = projects.reduce((sum, p) => sum + (p.members?.length || 0), 0)
 
-  // Show loading state while Clerk initializes
-  if (!isLoaded || loading) {
+  // Loading state
+  if (!isLoaded) {
     return (
       <div className="dashboard">
         <nav className="navbar">
@@ -128,7 +97,7 @@ const Dashboard = () => {
           </div>
         </nav>
         <div className="dashboard-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-          <h2>Loading...</h2>
+          <h2>Initializing...</h2>
         </div>
       </div>
     )
@@ -164,13 +133,11 @@ const Dashboard = () => {
           <div className="header-right">
             <button 
               className="btn-primary" 
-              onClick={() => {
-                setLoading(true)
-                fetchProjects()
-              }}
+              onClick={fetchProjects}
+              disabled={loading}
               title="Refresh projects"
             >
-              🔄 Refresh
+              🔄 {loading ? 'Loading...' : 'Refresh'}
             </button>
             <button className="btn-primary" onClick={() => setShowModal(true)}>
               <span className="btn-icon">+</span>
@@ -181,39 +148,28 @@ const Dashboard = () => {
 
         <div className="stats-cards">
           <div className="stat-card">
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)' }}>
-              📊
-            </div>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)' }}>📊</div>
             <div className="stat-info">
               <h3>{projects.length}</h3>
               <p>Total Projects</p>
             </div>
           </div>
-          
           <div className="stat-card">
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #42A5F5 0%, #64B5F6 100%)' }}>
-              ✅
-            </div>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #42A5F5 0%, #64B5F6 100%)' }}>✅</div>
             <div className="stat-info">
               <h3>{completedProjects}</h3>
               <p>Completed Projects</p>
             </div>
           </div>
-          
           <div className="stat-card">
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)' }}>
-              🔄
-            </div>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #0D47A1 0%, #1976D2 100%)' }}>🔄</div>
             <div className="stat-info">
               <h3>{inProgressTasks}</h3>
               <p>In Progress Tasks</p>
             </div>
           </div>
-          
           <div className="stat-card">
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #2196F3 0%, #42A5F5 100%)' }}>
-              👥
-            </div>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #2196F3 0%, #42A5F5 100%)' }}>👥</div>
             <div className="stat-info">
               <h3>{totalMembers}</h3>
               <p>Team Members</p>
@@ -221,14 +177,14 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {projects.length === 0 ? (
+        {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <h2 style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              No projects yet
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              Create your first project to get started!
-            </p>
+            <h2>Loading projects...</h2>
+          </div>
+        ) : projects.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <h2 style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No projects yet</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Create your first project to get started!</p>
             <button className="btn-primary" onClick={() => setShowModal(true)}>
               <span className="btn-icon">+</span>
               Create Project
@@ -243,18 +199,8 @@ const Dashboard = () => {
               
               const calculateProgress = (tasksList) => {
                 if (tasksList.length === 0) return 0
-                
-                const statusWeights = {
-                  'todo': 0,
-                  'in-progress': 33,
-                  'review': 66,
-                  'done': 100
-                }
-                
-                const totalProgress = tasksList.reduce((sum, task) => {
-                  return sum + (statusWeights[task.status] || 0)
-                }, 0)
-                
+                const statusWeights = { 'todo': 0, 'in-progress': 33, 'review': 66, 'done': 100 }
+                const totalProgress = tasksList.reduce((sum, task) => sum + (statusWeights[task.status] || 0), 0)
                 return Math.round(totalProgress / tasksList.length)
               }
               
@@ -270,66 +216,42 @@ const Dashboard = () => {
                     <div className="project-actions">
                       <button 
                         className="btn-edit-project"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingProject(project);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setEditingProject(project); }}
                         title="Edit project"
-                      >
-                        ✏️
-                      </button>
+                      >✏️</button>
                       <button 
                         className="btn-delete-project"
                         onClick={async (e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Are you sure you want to delete "${project.title}"?`)) {
+                          if (window.confirm(`Delete "${project.title}"?`)) {
                             try {
                               await projectsAPI.delete(project._id);
                               await fetchProjects();
                             } catch (error) {
-                              console.error('Error deleting project:', error);
-                              alert('Failed to delete project. You may not have permission.');
+                              alert('Failed to delete project');
                             }
                           }
                         }}
                         title="Delete project"
-                      >
-                        🗑️
-                      </button>
+                      >🗑️</button>
                     </div>
                   </div>
-                  <p className="project-description">{project.description || 'No description provided'}</p>
-                  
+                  <p className="project-description">{project.description || 'No description'}</p>
                   <div className="project-progress">
                     <div className="progress-info">
                       <span className="progress-label">Progress</span>
                       <span className="progress-percentage">{progress}%</span>
                     </div>
                     <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ 
-                          width: `${progress}%`,
-                          backgroundColor: project.color || '#1976D2'
-                        }}
-                      ></div>
+                      <div className="progress-fill" style={{ width: `${progress}%`, backgroundColor: project.color || '#1976D2' }}></div>
                     </div>
                   </div>
-
                   <div className="project-footer">
                     <div className="project-stats">
-                      <span className="stat-item">
-                        <span className="stat-icon">✓</span>
-                        {completedCount}/{taskCount} tasks
-                      </span>
-                      <span className="stat-item">
-                        <span className="stat-icon">👥</span>
-                        {project.members?.length || 1} members
-                      </span>
+                      <span className="stat-item"><span className="stat-icon">✓</span> {completedCount}/{taskCount} tasks</span>
+                      <span className="stat-item"><span className="stat-icon">👥</span> {project.members?.length || 1} members</span>
                     </div>
-                    <button className="btn-view" onClick={() => window.location.href = `/project/${project._id}`}>
-                      View →
-                    </button>
+                    <button className="btn-view" onClick={() => window.location.href = `/project/${project._id}`}>View →</button>
                   </div>
                 </div>
               )
@@ -338,20 +260,8 @@ const Dashboard = () => {
         )}
       </div>
 
-      {showModal && (
-        <ProjectModal 
-          onClose={() => setShowModal(false)} 
-          onSubmit={handleCreateProject}
-        />
-      )}
-
-      {editingProject && (
-        <ProjectModal 
-          project={editingProject}
-          onClose={() => setEditingProject(null)} 
-          onSubmit={handleUpdateProject}
-        />
-      )}
+      {showModal && <ProjectModal onClose={() => setShowModal(false)} onSubmit={handleCreateProject} />}
+      {editingProject && <ProjectModal project={editingProject} onClose={() => setEditingProject(null)} onSubmit={handleUpdateProject} />}
     </div>
   )
 }
