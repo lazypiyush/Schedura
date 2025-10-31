@@ -10,20 +10,19 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ PRODUCTION-READY CORS - Multiple origins support
+// ✅ PRODUCTION-READY CORS
 const allowedOrigins = [
-  'http://localhost:5173',              // Local dev
-  'https://schedura.vercel.app',        // Production
-  'https://schedura-workspace.vercel.app', // NEW: Current production URL
-  'https://schedura-git-main-lazypiyush.vercel.app', // Vercel preview
-  process.env.FRONTEND_URL              // Env variable
+  'http://localhost:5173',
+  'https://schedura.vercel.app',
+  'https://schedura-workspace.vercel.app',
+  'https://schedura-git-main-lazypiyush.vercel.app',
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 // Socket.IO with dynamic CORS
 const io = socketIo(server, {
   cors: {
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, Postman)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -33,12 +32,12 @@ const io = socketIo(server, {
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"]
   },
-  transports: ['websocket', 'polling'], // Fallback for better compatibility
+  transports: ['websocket', 'polling'],
   pingTimeout: 60000,
   pingInterval: 25000
 });
 
-// Express CORS middleware - ✅ FIXED
+// Express CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -52,13 +51,13 @@ app.use(cors({
   allowedHeaders: [
     'Content-Type', 
     'Authorization',
-    'x-auth-token'  // ✅ ADDED - Custom auth header
+    'x-auth-token'
   ]
 }));
 
 app.use(express.json());
 
-// MongoDB Connection with better error handling
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -69,27 +68,49 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .catch(err => {
   console.error('❌ MongoDB connection error:', err.message);
-  process.exit(1); // Exit if DB connection fails
+  process.exit(1);
 });
 
-// Socket.IO Connection
+// ✅ SOCKET.IO CONNECTION HANDLER
 io.on('connection', (socket) => {
   console.log('👤 New client connected:', socket.id);
   
+  // Join project room
   socket.on('join-project', (projectId) => {
     socket.join(projectId);
     console.log(`📋 User ${socket.id} joined project: ${projectId}`);
   });
   
+  // ✅ REAL-TIME TASK UPDATES
   socket.on('task-update', (data) => {
+    console.log('📋 Task updated:', data);
     io.to(data.projectId).emit('task-updated', data);
   });
   
+  // ✅ REAL-TIME TASK MOVED (Drag & Drop)
+  socket.on('task-moved', (data) => {
+    console.log('🔄 Task moved:', {
+      taskId: data.taskId,
+      fromColumn: data.fromStatus,
+      toColumn: data.toStatus,
+      projectId: data.projectId,
+      user: data.userId
+    });
+    io.to(data.projectId).emit('task-moved', data);
+  });
+  
+  // Real-time comments
   socket.on('new-comment', (data) => {
+    console.log('💬 New comment:', data);
     io.to(data.projectId).emit('comment-added', data);
   });
   
-  // Notification event
+  socket.on('comment-deleted', (data) => {
+    console.log('🗑️ Comment deleted:', data);
+    io.to(data.projectId).emit('comment-deleted', data);
+  });
+  
+  // Notifications
   socket.on('send-notification', (data) => {
     io.to(data.projectId).emit('notification', data);
   });
@@ -98,7 +119,6 @@ io.on('connection', (socket) => {
     console.log('👋 Client disconnected:', socket.id);
   });
   
-  // Error handling
   socket.on('error', (error) => {
     console.error('🔥 Socket error:', error);
   });
@@ -107,11 +127,10 @@ io.on('connection', (socket) => {
 // Make io accessible to routes
 app.set('socketio', io);
 
-// ⏰ Self-Ping Cron Job - Keep server awake on Render
+// ⏰ Self-Ping Cron Job
 if (process.env.NODE_ENV === 'production') {
   const BACKEND_URL = process.env.BACKEND_URL || 'https://schedura-backend.onrender.com';
   
-  // Ping every 14 minutes (before Render's 15-min sleep)
   cron.schedule('*/14 * * * *', async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/health`);
@@ -126,7 +145,7 @@ if (process.env.NODE_ENV === 'production') {
   console.log(`   Target URL: ${BACKEND_URL}/health`);
 }
 
-// Health check endpoint (for deployment monitoring)
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
@@ -159,11 +178,9 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/comments', require('./routes/comments'));
 
-// TEMPORARY DATABASE RESET ROUTE - DELETE AFTER USE!
-// ⚠️ SECURITY: Add authentication or remove in production
+// Database reset route (dev only)
 app.get('/api/admin/reset', async (req, res) => {
   try {
-    // Check if in production - prevent accidental data loss
     if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({ 
         error: 'Database reset is disabled in production',
@@ -186,12 +203,7 @@ app.get('/api/admin/reset', async (req, res) => {
     res.json({ 
       success: true, 
       msg: 'All data cleared! Please logout, clear localStorage, and create fresh accounts.',
-      cleared: {
-        tasks: true,
-        projects: true,
-        users: true,
-        comments: true
-      }
+      cleared: { tasks: true, projects: true, users: true, comments: true }
     });
   } catch (err) {
     console.error('❌ Error clearing database:', err.message);
