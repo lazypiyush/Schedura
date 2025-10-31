@@ -14,6 +14,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:5173',              // Local dev
   'https://schedura.vercel.app',        // Production
+  'https://schedura-workspace.vercel.app', // NEW: Current production URL
   'https://schedura-git-main-lazypiyush.vercel.app', // Vercel preview
   process.env.FRONTEND_URL              // Env variable
 ].filter(Boolean);
@@ -37,7 +38,7 @@ const io = socketIo(server, {
   pingInterval: 25000
 });
 
-// Express CORS middleware
+// Express CORS middleware - ✅ FIXED
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -48,7 +49,11 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization',
+    'x-auth-token'  // ✅ ADDED - Custom auth header
+  ]
 }));
 
 app.use(express.json());
