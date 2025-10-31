@@ -1,10 +1,15 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+// ✅ Environment-based API URL
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
+console.log('🌐 API URL:', API_URL);
+console.log('🔌 Socket URL:', SOCKET_URL);
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,11 +18,28 @@ const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  console.log('🔑 Token being sent:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
   if (token) {
     config.headers['x-auth-token'] = token;
   }
   return config;
 });
+
+// Handle response errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('❌ API Error:', error.response?.data || error.message);
+    
+    // Redirect to login on 401
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // Projects API
 export const projectsAPI = {
@@ -44,16 +66,5 @@ export const commentsAPI = {
   create: (data) => api.post('/comments', data),
   delete: (id) => api.delete(`/comments/${id}`),
 };
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  console.log('🔑 Token being sent:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
-  if (token) {
-    config.headers['x-auth-token'] = token;
-  }
-  return config;
-});
-
 
 export default api;

@@ -7,34 +7,71 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+// ✅ PRODUCTION-READY CORS - Multiple origins support
+const allowedOrigins = [
+  'http://localhost:5173',              // Local dev
+  'https://schedura.vercel.app',        // Production
+  'https://schedura-git-main-lazypiyush.vercel.app', // Vercel preview
+  process.env.FRONTEND_URL              // Env variable
+].filter(Boolean);
+
+// Socket.IO with dynamic CORS
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:5173", // FIXED: Changed from 5137 to 5173
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"]
-  }
+  },
+  transports: ['websocket', 'polling'], // Fallback for better compatibility
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
-// Middleware
+// Express CORS middleware
 app.use(cors({
-  origin: "http://localhost:5173" // FIXED: Also updated regular CORS
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
-// MongoDB Connection
+// MongoDB Connection with better error handling
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.log('MongoDB connection error:', err));
+.then(() => {
+  console.log('✅ MongoDB connected successfully');
+  console.log('🗄️  Database:', mongoose.connection.name);
+})
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1); // Exit if DB connection fails
+});
 
 // Socket.IO Connection
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
+  console.log('👤 New client connected:', socket.id);
   
   socket.on('join-project', (projectId) => {
     socket.join(projectId);
-    console.log(`User joined project: ${projectId}`);
+    console.log(`📋 User ${socket.id} joined project: ${projectId}`);
   });
   
   socket.on('task-update', (data) => {
@@ -51,16 +88,62 @@ io.on('connection', (socket) => {
   });
   
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('👋 Client disconnected:', socket.id);
+  });
+  
+  // Error handling
+  socket.on('error', (error) => {
+    console.error('🔥 Socket error:', error);
   });
 });
 
 // Make io accessible to routes
 app.set('socketio', io);
 
+// Health check endpoint (for deployment monitoring)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'Schedura API is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Schedura Project Management API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      projects: '/api/projects',
+      tasks: '/api/tasks',
+      comments: '/api/comments'
+    }
+  });
+});
+
+// API Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/projects', require('./routes/projects'));
+app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/comments', require('./routes/comments'));
+
 // TEMPORARY DATABASE RESET ROUTE - DELETE AFTER USE!
+// ⚠️ SECURITY: Add authentication or remove in production
 app.get('/api/admin/reset', async (req, res) => {
   try {
+    // Check if in production - prevent accidental data loss
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ 
+        error: 'Database reset is disabled in production',
+        message: 'Please use MongoDB Atlas UI to manage data'
+      });
+    }
+
     const Task = require('./models/Task');
     const Project = require('./models/Project');
     const User = require('./models/User');
@@ -89,16 +172,41 @@ app.get('/api/admin/reset', async (req, res) => {
   }
 });
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/projects', require('./routes/projects'));
-app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/comments', require('./routes/comments'));
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.originalUrl
+  });
+});
 
-// Test route
-app.get('/', (req, res) => {
-  res.send('Project Management API is running!');
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('🔥 Server Error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received, closing server gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    mongoose.connection.close(false, () => {
+      console.log('✅ MongoDB connection closed');
+      process.exit(0);
+    });
+  });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log('========================================');
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 Socket.IO ready`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log('========================================');
+});
