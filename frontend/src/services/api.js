@@ -1,11 +1,11 @@
-import axios from 'axios';
+import axios from 'axios'
 
-// ✅ Environment-based API URL
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// ✅ FIXED: Use production URL for app
+const API_URL = import.meta.env.VITE_API_URL || 'https://schedura-backend.onrender.com'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://schedura-backend.onrender.com'
 
-console.log('🌐 API URL:', API_URL);
-console.log('🔌 Socket URL:', SOCKET_URL);
+console.log('🌐 API URL:', API_URL)
+console.log('🔌 Socket URL:', SOCKET_URL)
 
 // Create axios instance
 const api = axios.create({
@@ -13,33 +13,33 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
+})
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  console.log('🔑 Token being sent:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+  const token = localStorage.getItem('token')
+  console.log('🔑 Token being sent:', token ? token.substring(0, 20) + '...' : 'NO TOKEN')
   if (token) {
-    config.headers['x-auth-token'] = token;
+    config.headers['x-auth-token'] = token
   }
-  return config;
-});
+  return config
+})
 
 // Handle response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('❌ API Error:', error.response?.data || error.message);
+    console.error('❌ API Error:', error.response?.data || error.message)
     
     // Redirect to login on 401
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('token')
+      window.location.href = '/login'
     }
     
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
 // Projects API
 export const projectsAPI = {
@@ -50,7 +50,7 @@ export const projectsAPI = {
   delete: (id) => api.delete(`/projects/${id}`),
   addMember: (id, email) => api.post(`/projects/${id}/members`, { email }),
   removeMember: (id, userId) => api.delete(`/projects/${id}/members/${userId}`),
-};
+}
 
 // Tasks API
 export const tasksAPI = {
@@ -58,13 +58,13 @@ export const tasksAPI = {
   create: (data) => api.post('/tasks', data),
   update: (id, data) => api.put(`/tasks/${id}`, data),
   delete: (id) => api.delete(`/tasks/${id}`),
-};
+}
 
 // Comments API
 export const commentsAPI = {
   getByTask: (taskId) => api.get(`/comments/task/${taskId}`),
   create: (data) => api.post('/comments', data),
   delete: (id) => api.delete(`/comments/${id}`),
-};
+}
 
-export default api;
+export default api

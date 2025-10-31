@@ -1,0 +1,26 @@
+{
+  "appId": "com.schedura.app",
+  "appName": "Schedura",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "https://accounts.clerk.com",
+      "https://api.clerk.com",
+      "https://*.clerk.com",
+      "https://schedura-backend.onrender.com",
+      "capacitor://localhost",
+      "ionic://localhost"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "launchAutoHide": true,
+      "backgroundColor": "#141824",
+      "showSpinner": true,
+      "spinnerColor": "#2196F3"
+    }
+  }
+}
