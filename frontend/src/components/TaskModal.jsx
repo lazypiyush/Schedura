@@ -8,7 +8,6 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
   const { user } = useUser()
   const socket = useSocket()
   
-  // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -16,11 +15,10 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
     dueDate: ''
   })
 
-  // Comments state
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
 
-  // Pre-fill form if editing existing task
+  // Pre-fill form
   useEffect(() => {
     if (task) {
       setFormData({
@@ -29,30 +27,36 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
         priority: task.priority || 'medium',
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
       })
-      
-      // Fetch comments if task exists
-      if (task._id) {
-        fetchComments()
-      }
     }
   }, [task])
 
-  // ✅ Real-time Socket.IO listener for new comments
+  // Fetch comments on mount and set up polling
+  useEffect(() => {
+    if (!task?._id) return
+
+    fetchComments()
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchComments, 5000)
+
+    return () => clearInterval(interval)
+  }, [task?._id])
+
+  // Socket.IO listener (bonus - instant updates when socket works)
   useEffect(() => {
     if (!socket || !task?._id) return
 
-    // Listen for new comments on this task
-    socket.on('comment-added', (data) => {
+    const handleCommentAdded = (data) => {
+      console.log('💬 Socket comment update:', data)
       if (data.taskId === task._id) {
-        console.log('💬 New comment received via socket:', data)
-        // Auto-refresh comments
         fetchComments()
       }
-    })
+    }
 
-    // Cleanup listener on unmount
+    socket.on('comment-added', handleCommentAdded)
+
     return () => {
-      socket.off('comment-added')
+      socket.off('comment-added', handleCommentAdded)
     }
   }, [socket, task?._id])
 
@@ -71,23 +75,22 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
     if (!newComment.trim() || !task?._id) return
 
     try {
-      const response = await commentsAPI.create({
+      await commentsAPI.create({
         taskId: task._id,
         text: newComment.trim()
       })
       
       setNewComment('')
       
-      // ✅ Emit socket event for real-time update
+      // Emit socket event
       if (socket) {
         socket.emit('new-comment', {
           taskId: task._id,
-          projectId: task.project,
-          comment: response.data
+          projectId: task.project
         })
       }
       
-      // Immediate local update
+      // Immediate update
       await fetchComments()
     } catch (error) {
       console.error('Error adding comment:', error)
@@ -100,7 +103,6 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
     try {
       await commentsAPI.delete(commentId)
       
-      // ✅ Emit socket event for deletion
       if (socket) {
         socket.emit('new-comment', {
           taskId: task._id,
@@ -128,7 +130,6 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Task Form */}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Task Title *</label>
@@ -186,19 +187,21 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
           </div>
         </form>
 
-        {/* Comments Section with Auto-Refresh */}
+        {/* Comments Section */}
         {task?._id && (
           <div className="task-comments-section">
             <div className="comments-divider"></div>
             
             <div className="comments-header">
               <h3>💬 Comments ({comments.length})</h3>
-              <span className="auto-refresh-indicator">🔄 Auto-updating</span>
+              <span className="auto-refresh-indicator">
+                🔄 Auto-refreshing every 5s
+              </span>
             </div>
 
             <div className="comments-list">
               {comments.length === 0 ? (
-                <p className="no-comments">No comments yet. Be the first to comment!</p>
+                <p className="no-comments">No comments yet. Be the first!</p>
               ) : (
                 comments.map(comment => (
                   <div key={comment._id} className="comment-item">
@@ -221,7 +224,6 @@ const TaskModal = ({ task, onClose, onSubmit }) => {
                           onClick={() => handleDeleteComment(comment._id)}
                           className="btn-delete-comment"
                           type="button"
-                          title="Delete comment"
                         >
                           🗑️
                         </button>
