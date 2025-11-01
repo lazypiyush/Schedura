@@ -16,8 +16,8 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ClerkProvider 
       publishableKey={PUBLISHABLE_KEY}
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
     >
       <BrowserRouter>
         <SocketProvider>
@@ -25,5 +25,5 @@ createRoot(document.getElementById('root')).render(
         </SocketProvider>
       </BrowserRouter>
     </ClerkProvider>
-  </StrictMode>,
+  </StrictMode>
 )

@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
+import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import Login from './pages/Login'
 import SignUpPage from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
@@ -38,6 +38,21 @@ function App() {
         }
       />
 
+      {/* ✅ ADD THIS: SSO Callback Route */}
+      <Route
+        path="/login/sso-callback"
+        element={
+          <>
+            <SignedIn>
+              <Navigate to="/dashboard" replace />
+            </SignedIn>
+            <SignedOut>
+              <Navigate to="/login" replace />
+            </SignedOut>
+          </>
+        }
+      />
+
       {/* Protected Routes */}
       <Route
         path="/dashboard"
@@ -69,6 +84,9 @@ function App() {
 
       {/* Default Route */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      
+      {/* ✅ 404 Catch All */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }
