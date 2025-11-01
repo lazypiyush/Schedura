@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { projectsAPI } from '../services/api'
 import ProjectModal from '../components/ProjectModal'
-import InstallButton from '../components/InstallButton' // ✅ ADD BACK
+import InstallButton from '../components/InstallButton'
+import { useSocket } from '../context/SocketContext'
 import './Dashboard.css'
 
 const Dashboard = () => {
   const { user, isLoaded } = useUser()
   useAuth()
+  const socket = useSocket()
   
   const [isDark, setIsDark] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -30,6 +32,47 @@ const Dashboard = () => {
       return () => clearTimeout(timer)
     }
   }, [isLoaded, user?.id])
+
+  // ✅ Real-time updates
+  useEffect(() => {
+    if (!socket || !user?.id) return
+
+    const handleProjectCreated = (newProject) => {
+      console.log('📢 New project created:', newProject)
+      fetchProjects()
+    }
+
+    const handleProjectUpdated = (updatedProject) => {
+      console.log('📢 Project updated:', updatedProject)
+      fetchProjects()
+    }
+
+    const handleProjectDeleted = (deletedProjectId) => {
+      console.log('📢 Project deleted:', deletedProjectId)
+      setProjects(prev => prev.filter(p => p._id !== deletedProjectId))
+    }
+
+    const handleTaskChanged = () => {
+      console.log('📢 Tasks changed - refreshing projects')
+      fetchProjects()
+    }
+
+    socket.on('projectCreated', handleProjectCreated)
+    socket.on('projectUpdated', handleProjectUpdated)
+    socket.on('projectDeleted', handleProjectDeleted)
+    socket.on('taskCreated', handleTaskChanged)
+    socket.on('taskUpdated', handleTaskChanged)
+    socket.on('taskDeleted', handleTaskChanged)
+
+    return () => {
+      socket.off('projectCreated', handleProjectCreated)
+      socket.off('projectUpdated', handleProjectUpdated)
+      socket.off('projectDeleted', handleProjectDeleted)
+      socket.off('taskCreated', handleTaskChanged)
+      socket.off('taskUpdated', handleTaskChanged)
+      socket.off('taskDeleted', handleTaskChanged)
+    }
+  }, [socket, user?.id])
 
   const fetchProjects = async () => {
     try {
@@ -110,7 +153,7 @@ const Dashboard = () => {
           <h2>Schedura</h2>
         </div>
         <div className="navbar-actions">
-          <InstallButton /> {/* ✅ INSTALL BUTTON */}
+          <InstallButton />
           
           <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle theme">
             {isDark ? '☀️' : '🌙'}
