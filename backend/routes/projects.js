@@ -15,8 +15,8 @@ router.get('/', auth, async (req, res) => {
         { members: req.user.id }
       ]
     })
-    .populate('createdBy', 'name email avatar') // AVATAR ADDED
-    .populate('members', 'name email avatar')    // AVATAR ADDED
+    .populate('createdBy', 'name email avatar profilePhoto')
+    .populate('members', 'name email avatar profilePhoto')
     .sort({ createdAt: -1 });
 
     // Fetch tasks for each project
@@ -25,6 +25,18 @@ router.get('/', auth, async (req, res) => {
         const tasks = await Task.find({ project: project._id });
         const projectObj = project.toObject();
         projectObj.tasks = tasks;
+        
+        // ✅ Ensure avatar/profilePhoto consistency
+        if (projectObj.createdBy) {
+          projectObj.createdBy.profilePhoto = projectObj.createdBy.avatar || projectObj.createdBy.profilePhoto;
+        }
+        if (projectObj.members) {
+          projectObj.members = projectObj.members.map(m => ({
+            ...m,
+            profilePhoto: m.avatar || m.profilePhoto
+          }));
+        }
+        
         return projectObj;
       })
     );
@@ -40,8 +52,8 @@ router.get('/', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email avatar') // AVATAR ADDED
-      .populate('members', 'name email avatar');   // AVATAR ADDED
+      .populate('createdBy', 'name email avatar profilePhoto')
+      .populate('members', 'name email avatar profilePhoto');
 
     if (
       !project ||
@@ -52,7 +64,20 @@ router.get('/:id', auth, async (req, res) => {
     ) {
       return res.status(404).json({ msg: 'Project not found' });
     }
-    res.json(project);
+    
+    // ✅ Sync avatar/profilePhoto
+    const projectObj = project.toObject();
+    if (projectObj.createdBy) {
+      projectObj.createdBy.profilePhoto = projectObj.createdBy.avatar || projectObj.createdBy.profilePhoto;
+    }
+    if (projectObj.members) {
+      projectObj.members = projectObj.members.map(m => ({
+        ...m,
+        profilePhoto: m.avatar || m.profilePhoto
+      }));
+    }
+    
+    res.json(projectObj);
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
@@ -62,7 +87,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Create project (attach creator as createdBy/owner and first member)
+// Create project
 router.post('/', auth, async (req, res) => {
   try {
     const { title, description, color } = req.body;
@@ -82,8 +107,8 @@ router.post('/', auth, async (req, res) => {
     const project = await newProject.save();
 
     const populatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email avatar') // AVATAR ADDED
-      .populate('members', 'name email avatar');   // AVATAR ADDED
+      .populate('createdBy', 'name email avatar profilePhoto')
+      .populate('members', 'name email avatar profilePhoto');
 
     console.log('✅ Project created by:', req.user.id);
     res.json(populatedProject);
@@ -93,7 +118,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Update project (only owner) - WITH DEBUG LOGGING
+// Update project
 router.put('/:id', auth, async (req, res) => {
   try {
     const { title, description, color } = req.body;
@@ -104,27 +129,18 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Project not found' });
     }
 
-    // DEBUG: Log IDs for comparison
     console.log('🔍 Update Project Authorization Check:');
     console.log('  📋 Project ID:', req.params.id);
     console.log('  👤 Project createdBy:', project.createdBy.toString());
     console.log('  🔑 Current user ID:', req.user.id);
-    console.log('  ✓ IDs match?', project.createdBy.toString() === req.user.id);
 
     if (project.createdBy.toString() !== req.user.id) {
-      console.log('❌ Authorization FAILED - User is not the project owner');
-      return res.status(403).json({ 
-        msg: 'Not authorized to update this project',
-        debug: {
-          projectOwner: project.createdBy.toString(),
-          currentUser: req.user.id
-        }
-      });
+      console.log('❌ Authorization FAILED');
+      return res.status(403).json({ msg: 'Not authorized to update this project' });
     }
 
     console.log('✅ Authorization passed - Updating project');
 
-    // Update fields
     if (title) project.title = title;
     if (description !== undefined) project.description = description;
     if (color) project.color = color;
@@ -132,8 +148,8 @@ router.put('/:id', auth, async (req, res) => {
     await project.save();
 
     const updatedProject = await Project.findById(project._id)
-      .populate('createdBy', 'name email avatar') // AVATAR ADDED
-      .populate('members', 'name email avatar');   // AVATAR ADDED
+      .populate('createdBy', 'name email avatar profilePhoto')
+      .populate('members', 'name email avatar profilePhoto');
 
     console.log('✅ Project updated successfully:', project.title);
     res.json(updatedProject);
@@ -143,7 +159,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete project (only owner)
+// Delete project
 router.delete('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -168,7 +184,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Add member to project (only owner)
+// Add member to project
 router.post('/:id/members', auth, async (req, res) => {
   try {
     const { email } = req.body;
@@ -188,13 +204,15 @@ router.post('/:id/members', auth, async (req, res) => {
     if (project.members.some(member => member.toString() === user._id.toString())) {
       return res.status(400).json({ msg: 'User is already a member' });
     }
+    
     project.members.push(user._id);
     await project.save();
 
     const updatedProject = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email avatar') // AVATAR ADDED
-      .populate('members', 'name email avatar');   // AVATAR ADDED
+      .populate('createdBy', 'name email avatar profilePhoto')
+      .populate('members', 'name email avatar profilePhoto');
 
+    console.log('✅ Member added:', user.email);
     res.json(updatedProject);
   } catch (err) {
     console.error(err.message);
@@ -202,7 +220,7 @@ router.post('/:id/members', auth, async (req, res) => {
   }
 });
 
-// Remove member from project (only owner)
+// Remove member from project
 router.delete('/:id/members/:userId', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -212,14 +230,17 @@ router.delete('/:id/members/:userId', auth, async (req, res) => {
     if (project.createdBy.toString() !== req.user.id) {
       return res.status(403).json({ msg: 'Not authorized' });
     }
+    
     project.members = project.members.filter(
       member => member.toString() !== req.params.userId
     );
     await project.save();
 
     const updatedProject = await Project.findById(req.params.id)
-      .populate('createdBy', 'name email avatar') // AVATAR ADDED
-      .populate('members', 'name email avatar');   // AVATAR ADDED
+      .populate('createdBy', 'name email avatar profilePhoto')
+      .populate('members', 'name email avatar profilePhoto');
+      
+    console.log('✅ Member removed');
     res.json(updatedProject);
   } catch (err) {
     console.error(err.message);

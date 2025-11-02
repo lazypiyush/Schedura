@@ -19,19 +19,27 @@ router.post('/sync', async (req, res) => {
     let user = await User.findOne({ clerkId });
     
     if (!user) {
-      user = new User({ clerkId, email, name, avatar: avatar || '' });
+      user = new User({ 
+        clerkId, 
+        email, 
+        name, 
+        avatar: avatar || '',
+        profilePhoto: avatar || '' // ✅ Sync both fields
+      });
       await user.save();
       console.log('✅ NEW USER CREATED');
       console.log('MongoDB _id:', user._id.toString());
+      console.log('🖼️ Avatar saved:', user.avatar);
     } else {
       console.log('👤 EXISTING USER FOUND');
       console.log('MongoDB _id:', user._id.toString());
       
-      // Update avatar if changed
+      // ✅ Update avatar if changed
       if (avatar && user.avatar !== avatar) {
         user.avatar = avatar;
+        user.profilePhoto = avatar; // ✅ Sync both
         await user.save();
-        console.log('🖼️ Avatar updated');
+        console.log('🖼️ Avatar updated:', avatar);
       }
     }
 
@@ -51,7 +59,8 @@ router.post('/sync', async (req, res) => {
         id: user._id, 
         email: user.email, 
         name: user.name,
-        avatar: user.avatar 
+        avatar: user.avatar,
+        profilePhoto: user.avatar // ✅ Send both
       } 
     });
   } catch (err) {

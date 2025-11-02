@@ -23,9 +23,18 @@ const UserSchema = new mongoose.Schema({
   avatar: { 
     type: String, 
     default: '' 
+  },
+  profilePhoto: { // ✅ ALIAS for avatar (for consistency)
+    type: String, 
+    default: '' 
   }
 }, { 
   timestamps: true 
+});
+
+// ✅ Virtual field to sync avatar and profilePhoto
+UserSchema.virtual('photo').get(function() {
+  return this.avatar || this.profilePhoto;
 });
 
 module.exports = mongoose.model('User', UserSchema);

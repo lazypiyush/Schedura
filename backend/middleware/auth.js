@@ -10,10 +10,10 @@ module.exports = function(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded.user;
-    console.log('Authenticated user ID:', req.user.id); // Add this debug log
+    console.log('✅ Authenticated user ID:', req.user.id);
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
+    console.error('❌ Auth middleware error:', err.message);
     res.status(401).json({ msg: 'Token is not valid' });
   }
 };
