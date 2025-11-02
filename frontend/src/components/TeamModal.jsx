@@ -65,13 +65,31 @@ const TeamModal = ({ project, onClose, onUpdate }) => {
             <div className="member-items">
               {project.members.map((member) => (
                 <div key={member._id} className="member-item">
-                  <div className="member-avatar">
+                  {/* ✅ PROFILE PHOTO */}
+                  {member.profilePhoto ? (
+                    <img 
+                      src={member.profilePhoto} 
+                      alt={member.name}
+                      className="member-avatar-img"
+                      onError={(e) => {
+                        // Fallback to initials if image fails
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className="member-avatar" 
+                    style={{ display: member.profilePhoto ? 'none' : 'flex' }}
+                  >
                     {member.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
+                  
                   <div className="member-info">
                     <p className="member-name">{member.name}</p>
                     <p className="member-email">{member.email}</p>
                   </div>
+                  
                   {project.createdBy !== member._id && (
                     <button
                       className="btn-remove"

@@ -55,6 +55,24 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* ✅ Scrollbar Styling */
+.member-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.member-items::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+
+.member-items::-webkit-scrollbar-thumb {
+  background: var(--primary-blue);
+  border-radius: 10px;
 }
 
 .member-item {
@@ -65,8 +83,27 @@
   background: var(--bg-secondary);
   border-radius: 12px;
   border: 2px solid var(--border-color);
+  transition: all 0.3s ease;
 }
 
+.member-item:hover {
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
+
+/* ✅ Profile Photo Image */
+.member-avatar-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary-blue);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+  flex-shrink: 0;
+}
+
+/* ✅ Initials Avatar (Fallback) */
 .member-avatar {
   width: 48px;
   height: 48px;
@@ -79,6 +116,8 @@
   font-size: 20px;
   font-weight: 700;
   flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
 .member-info {
@@ -113,16 +152,18 @@
 .btn-remove:hover {
   background: var(--error);
   color: white;
+  transform: scale(1.05);
 }
 
 .owner-badge {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
 .no-members {
@@ -130,4 +171,50 @@
   color: var(--text-secondary);
   padding: 32px 20px;
   font-size: 14px;
+}
+
+/* ✅ Responsive Design */
+@media (max-width: 768px) {
+  .team-modal-content {
+    max-width: 100%;
+    margin: 20px;
+  }
+
+  .input-group {
+    flex-direction: column;
+  }
+
+  .btn-add {
+    width: 100%;
+  }
+
+  .member-item {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .member-avatar-img,
+  .member-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .member-name {
+    font-size: 14px;
+  }
+
+  .member-email {
+    font-size: 12px;
+  }
+
+  .btn-remove {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .owner-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
 }
