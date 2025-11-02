@@ -11,7 +11,6 @@ export const useAuth = () => {
           console.log('🔄 Syncing user:', user.id)
           console.log('🖼️ Avatar URL:', user.imageUrl)
           
-          // ✅ FIXED: Use environment variable instead of localhost
           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
           
           const response = await fetch(`${API_URL}/api/auth/sync`, {
@@ -21,13 +20,14 @@ export const useAuth = () => {
               clerkId: user.id,
               email: user.primaryEmailAddress?.emailAddress,
               name: user.fullName || user.firstName || 'User',
-              avatar: user.imageUrl
+              avatar: user.imageUrl // ✅ Send Clerk avatar
             })
           })
           
           if (response.ok) {
             const data = await response.json()
             console.log('✅ Token saved for user:', user.id)
+            console.log('✅ Avatar synced:', data.user.avatar)
             localStorage.setItem('token', data.token)
           } else {
             console.error('❌ Auth sync failed:', response.status)
@@ -42,7 +42,7 @@ export const useAuth = () => {
     }
 
     syncUser()
-  }, [isSignedIn, user?.id])
+  }, [isSignedIn, user?.id, user?.imageUrl]) // ✅ Also watch imageUrl changes
 
   return { isSignedIn, user }
 }
